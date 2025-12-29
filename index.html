@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yibu Save Editor (Fix Version)</title>
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --bg: #f8f9fa;
+            --card: #ffffff;
+            --text: #2d3436;
+            --border: #dfe6e9;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 20px;
+            color: var(--text);
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: var(--card);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+
+        h1 { text-align: center; color: var(--primary); margin-bottom: 10px; }
+        .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 30px; }
+        h2 { border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-top: 40px; color: #555; font-size: 18px; }
+
+        .controls {
+            text-align: center;
+            background: #fff;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+        .controls:hover { border-color: var(--primary); }
+
+        /* --- Team Editor --- */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .pkmn-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--primary);
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+
+        .pkmn-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+            font-weight: bold;
+            color: #b2bec3;
+            letter-spacing: 0.5px;
+        }
+
+        .shiny-label { 
+            color: #e17055; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            font-size: 12px;
+            user-select: none;
+        }
+        .shiny-label input { margin-right: 4px; }
+
+        .form-row { display: flex; align-items: center; margin-bottom: 8px; }
+        .form-row label { width: 65px; color: #636e72; font-weight: 600; font-size: 12px; }
+        .form-row input { 
+            flex: 1; 
+            padding: 6px; 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            transition: border-color 0.2s;
+        }
+        .form-row input:focus { border-color: var(--primary); outline: none; }
+        
+        .moves-box { 
+            background: #f1f2f6; 
+            padding: 10px; 
+            border-radius: 6px; 
+            margin-top: 10px; 
+        }
+        .moves-title { font-size: 11px; font-weight: bold; color: #a4b0be; margin-bottom: 6px; }
+
+        /* --- Item Editor --- */
+        .search-bar {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        .item-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 12px;
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            padding: 15px;
+            background: #fafafa;
+            border-radius: 8px;
+        }
+
+        .item-card {
+            background: #fff;
+            border: 1px solid #eee;
+            padding: 12px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .item-cn { font-weight: bold; font-size: 14px; color: #2d3436; }
+        .item-en { font-size: 11px; color: #999; font-family: monospace; }
+        
+        .qty-row { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
+        .qty-row span { font-size: 12px; color: #666; }
+        .qty-row input { width: 80px; text-align: right; padding: 4px; border: 1px solid #ddd; border-radius: 4px; }
+
+        .tag-auto { font-size: 10px; background: #dfe6e9; color: #636e72; padding: 2px 5px; border-radius: 3px; margin-left: 5px; }
+
+        /* --- Footer --- */
+        .save-btn {
+            display: block;
+            width: 240px;
+            margin: 40px auto 0;
+            padding: 15px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+        }
+        .save-btn:hover { background: #5649c0; transform: translateY(-2px); }
+        .save-btn:disabled { background: #b2bec3; cursor: not-allowed; box-shadow: none; transform: none; }
+
+        #errorMsg { color: #d63031; text-align: center; display: none; margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>pokechill 存档修改器</h1>
+    <div class="subtitle">Support Team Editing (Shiny, Moves, Species) & Item Editing</div>
+    
+    <div class="controls">
+        <input type="file" id="fileInput" accept=".json">
+        <div id="errorMsg"></div>
+    </div>
+
+    <div id="mainArea" style="display:none;">
+        
+        <h2>Team Editor (Active Party)</h2>
+        <div class="team-grid" id="teamGrid">
+            </div>
+
+        <h2>Item Editor (物品修改)</h2>
+        <input type="text" id="searchBox" class="search-bar" placeholder="搜索物品名称 / Search Items...">
+        <div class="item-grid" id="itemGrid">
+            </div>
+
+        <button id="saveBtn" class="save-btn">保存修改并下载 (Save & Download)</button>
+    </div>
+</div>
+
+<script>
+    let jsonData = null;
+    let activePreviewKey = "preview1"; // Default
+
+    // --- 1. 精准翻译库 (保留第一版) ---
+    const preciseMap = {
+        "rareCandy": "神奇糖果 (升级)", "goldenBottleCap": "金色王冠 (满个体)", "bottleCap": "银色王冠",
+        "abilityPatch": "特性药膏 (梦特)", "abilityCapsule": "特性胶囊", "ppUp": "PP提升剂",
+        "ppMax": "PP极限提升剂", "masterBall": "大师球", "shinyCharm": "闪光护符",
+        "ovalStone": "浑圆之石", "everstone": "不变之石", "destinyKnot": "红线", "expShare": "学习装置",
+        "hpUp": "HP增强剂", "protein": "攻击增强剂", "iron": "防御增强剂", "calcium": "特攻增强剂",
+        "zinc": "特防增强剂", "carbos": "速度增强剂",
+        "fireStone": "火之石", "waterStone": "水之石", "thunderStone": "雷之石", "leafStone": "叶之石",
+        "moonStone": "月之石", "sunStone": "日之石", "duskStone": "暗之石", "dawnStone": "觉醒之石",
+        "shinyStone": "光之石", "iceStone": "冰之石", "linkStone": "联系绳",
+        "leftovers": "吃剩的东西", "lifeOrb": "生命宝珠", "toxicOrb": "剧毒宝珠", "flameOrb": "火焰宝珠",
+        "choiceBand": "讲究头带", "choiceSpecs": "讲究眼镜", "choiceScarf": "讲究围巾", "assaultVest": "突击背心",
+        "focusSash": "气势披带", "rockyHelmet": "凸凸头盔", "blackGlasses": "黑色眼镜 (恶)", "charcoal": "木炭 (火)",
+        "mysticWater": "神秘水滴 (水)", "miracleSeed": "奇迹种子 (草)", "magnet": "磁铁 (电)", "neverMeltIce": "不融冰 (冰)",
+        "dragonFang": "龙之牙 (龙)", "spellTag": "诅咒之符 (幽灵)", "blackBelt": "黑带 (格斗)", "sharpBeak": "锐利鸟嘴 (飞行)",
+        "poisonBarb": "毒针 (毒)", "softSand": "柔软沙子 (地)", "hardStone": "硬石头 (岩)", "silverPowder": "银粉 (虫)",
+        "twistedSpoon": "弯曲的汤匙 (超能)", "metalCoat": "金属膜 (钢)", "silkScarf": "丝绸围巾 (一般)", "fairyFeather": "妖精之羽 (妖精)"
+    };
+
+    // --- 2. 自动机翻词典 ---
+    const autoDict = {
+        "Ball": "球", "Berry": "果", "Stone": "石", "Candy": "糖", "Tm": "技能机", "Key": "钥匙",
+        "Pass": "证", "Charm": "护符", "Plate": "石板", "Orb": "宝珠", "Fire": "火", "Water": "水",
+        "Thunder": "雷", "Leaf": "叶", "Ice": "冰", "Dragon": "龙", "Fairy": "妖精", "Ghost": "幽灵",
+        "Bug": "虫", "Dark": "恶", "Choice": "讲究", "Assault": "突击", "Focus": "气势", "Leftovers": "剩饭",
+        "Life": "生命", "Mystic": "神秘", "Miracle": "奇迹", "Never": "不融", "Hard": "硬", "Soft": "软",
+        "Sharp": "锐利", "Poison": "毒", "Metal": "金属", "Great": "超级", "Ultra": "特级", "Quick": "先制",
+        "Heavy": "沉重", "Wise": "博识", "Muscle": "力量", "Scope": "焦点", "Lens": "镜", "Claw": "爪",
+        "Fang": "牙", "Scale": "鳞片", "Powder": "粉", "Spoon": "勺"
+    };
+
+    function translateItem(key) {
+        if (preciseMap[key]) return { text: preciseMap[key], isAuto: false };
+        const words = key.replace(/([A-Z])/g, ' $1').trim().split(' ');
+        const translated = words.map(w => {
+            const cap = w.charAt(0).toUpperCase() + w.slice(1);
+            return autoDict[cap] || w;
+        }).join('');
+        if (translated.replace(/\s/g, '') === key) return { text: key, isAuto: false };
+        return { text: translated, isAuto: true };
+    }
+
+    // --- 3. 初始化与渲染 ---
+    const fileInput = document.getElementById('fileInput');
+    const mainArea = document.getElementById('mainArea');
+    const teamGrid = document.getElementById('teamGrid');
+    const itemGrid = document.getElementById('itemGrid');
+    const searchBox = document.getElementById('searchBox');
+    const saveBtn = document.getElementById('saveBtn');
+    const errorMsg = document.getElementById('errorMsg');
+
+    // 暂存队伍数据的编辑状态（因为直接修改jsonData可能在保存前逻辑太乱，
+    // 我们这里采用直接绑定到DOM，保存时再读取DOM写回jsonData的方式）
+    
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                jsonData = JSON.parse(ev.target.result);
+                errorMsg.style.display = 'none';
+                
+                // 确定当前使用的队伍配置
+                if (jsonData.saved && jsonData.saved.currentPreviewTeam) {
+                    activePreviewKey = jsonData.saved.currentPreviewTeam;
+                }
+                
+                renderTeam();
+                renderItems();
+                mainArea.style.display = 'block';
+            } catch(err) { 
+                console.error(err);
+                errorMsg.innerText = "Error: " + err.message;
+                errorMsg.style.display = 'block';
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    function renderTeam() {
+        teamGrid.innerHTML = '';
+        
+        // 1. 读取配置表 (Config)
+        const previewData = jsonData.saved.previewTeams[activePreviewKey];
+        if (!previewData) {
+            teamGrid.innerHTML = '<div>Error: Could not find active preview team data.</div>';
+            return;
+        }
+
+        for (let i = 1; i <= 6; i++) {
+            const slotKey = 'slot' + i;
+            const configSlot = previewData[slotKey]; // Contains { pkmn: "id", item: "item" }
+            
+            // 如果该槽位没有宝可梦，显示为空
+            if (!configSlot || !configSlot.pkmn) {
+                const empty = document.createElement('div');
+                empty.className = 'pkmn-card';
+                empty.innerHTML = `<div class="pkmn-header">SLOT ${i}</div><div style="color:#ccc;">Empty</div>`;
+                teamGrid.appendChild(empty);
+                continue;
+            }
+
+            const speciesId = configSlot.pkmn;
+            // 2. 读取本体数据 (Root Object)，这里包含了Moves, Shiny等
+            // 如果root里找不到这个id（理论上不应该），就用默认空对象防止报错
+            const rootPkmn = jsonData[speciesId] || { moves: {}, ability: "", shiny: false };
+            
+            // 确保 moves 结构存在
+            if (!rootPkmn.moves) rootPkmn.moves = {};
+
+            const card = document.createElement('div');
+            card.className = 'pkmn-card';
+            // 我们把 slotKey 存在 data 属性里，方便保存时读取
+            card.dataset.slotKey = slotKey; 
+            
+            card.innerHTML = `
+                <div class="pkmn-header">
+                    <span>SLOT ${i}</span>
+                    <label class="shiny-label">
+                        <input type="checkbox" class="inp-shiny" ${rootPkmn.shiny ? 'checked' : ''}> Shiny
+                    </label>
+                </div>
+
+                <div class="form-row">
+                    <label>Species</label>
+                    <input type="text" class="inp-id" value="${speciesId}">
+                </div>
+                <div class="form-row">
+                    <label>Item</label>
+                    <input type="text" class="inp-item" value="${configSlot.item || ''}">
+                </div>
+                <div class="form-row">
+                    <label>Ability</label>
+                    <input type="text" class="inp-ability" value="${rootPkmn.ability || ''}">
+                </div>
+
+                <div class="moves-box">
+                    <div class="moves-title">MOVESET</div>
+                    <div class="form-row"><label>M1</label><input type="text" class="move-1" value="${rootPkmn.moves.slot1 || ''}"></div>
+                    <div class="form-row"><label>M2</label><input type="text" class="move-2" value="${rootPkmn.moves.slot2 || ''}"></div>
+                    <div class="form-row"><label>M3</label><input type="text" class="move-3" value="${rootPkmn.moves.slot3 || ''}"></div>
+                    <div class="form-row"><label>M4</label><input type="text" class="move-4" value="${rootPkmn.moves.slot4 || ''}"></div>
+                </div>
+            `;
+            teamGrid.appendChild(card);
+        }
+    }
+
+    function renderItems(filter = "") {
+        itemGrid.innerHTML = '';
+        const keys = Object.keys(jsonData);
+        
+        keys.forEach(key => {
+            const val = jsonData[key];
+            if (val && typeof val === 'object' && val.hasOwnProperty('got') && typeof val.got === 'number') {
+                const { text, isAuto } = translateItem(key);
+                const en = key;
+                
+                if (filter) {
+                    const f = filter.toLowerCase();
+                    if (!text.toLowerCase().includes(f) && !en.toLowerCase().includes(f)) return;
+                }
+
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                const tag = isAuto ? `<span class="tag-auto">机翻</span>` : '';
+                
+                card.innerHTML = `
+                    <div class="item-cn">${text} ${tag}</div>
+                    <div class="item-en">${en}</div>
+                    <div class="qty-row">
+                        <span>数量</span>
+                        <input type="number" min="0" value="${val.got}" data-key="${key}">
+                    </div>
+                `;
+                
+                // 物品数量直接绑定修改
+                card.querySelector('input').addEventListener('input', function() {
+                    jsonData[key].got = parseInt(this.value) || 0;
+                });
+                
+                itemGrid.appendChild(card);
+            }
+        });
+    }
+
+    searchBox.addEventListener('input', (e) => renderItems(e.target.value));
+
+    // --- 4. 保存逻辑 (核心修复) ---
+    saveBtn.addEventListener('click', () => {
+        if(!jsonData) return;
+
+        // 遍历队伍编辑器中的卡片，把数据写回 JSON
+        const cards = teamGrid.querySelectorAll('.pkmn-card');
+        
+        cards.forEach(card => {
+            const slotKey = card.dataset.slotKey;
+            
+            // 获取输入框的值
+            const newId = card.querySelector('.inp-id').value.trim();
+            const newItem = card.querySelector('.inp-item').value.trim();
+            const newAbility = card.querySelector('.inp-ability').value.trim();
+            const newShiny = card.querySelector('.inp-shiny').checked;
+            
+            const m1 = card.querySelector('.move-1').value.trim() || null;
+            const m2 = card.querySelector('.move-2').value.trim() || null;
+            const m3 = card.querySelector('.move-3').value.trim() || null;
+            const m4 = card.querySelector('.move-4').value.trim() || null;
+            const newMoves = { slot1: m1, slot2: m2, slot3: m3, slot4: m4 };
+
+            // 1. 更新 Config (saved.previewTeams)
+            // 告诉游戏这个槽位现在是这个宝可梦和道具
+            if (!jsonData.saved.previewTeams[activePreviewKey][slotKey]) {
+                jsonData.saved.previewTeams[activePreviewKey][slotKey] = {};
+            }
+            jsonData.saved.previewTeams[activePreviewKey][slotKey].pkmn = newId;
+            jsonData.saved.previewTeams[activePreviewKey][slotKey].item = newItem;
+
+            // 2. 更新 Root Species Data (宝可梦本体)
+            // 确保该 ID 对应的根对象存在
+            if (!jsonData[newId]) {
+                // 如果是新宝可梦，创建一个基础模板
+                jsonData[newId] = {
+                    caught: 1, // 关键：标记为已捕获
+                    level: 100, // 默认满级方便使用
+                    exp: 0,
+                    ivs: { hp:31, atk:31, def:31, satk:31, sdef:31, spe:31 }, // 默认给点个体值
+                    moves: {}
+                };
+            } else {
+                // 如果已存在，强制设为 caught=1 (防止修改成未抓过的导致不可用)
+                if (!jsonData[newId].caught) jsonData[newId].caught = 1;
+            }
+
+            // 写入本体属性
+            jsonData[newId].ability = newAbility;
+            jsonData[newId].shiny = newShiny;
+            jsonData[newId].moves = newMoves;
+
+            // 3. 更新 Runtime Team (jsonData.team)
+            // 这是为了防止加载存档的瞬间数据不一致
+            if (jsonData.team && jsonData.team[slotKey]) {
+                jsonData.team[slotKey].item = newItem;
+                
+                // 我们必须确保 team 里的 pkmn 对象 ID 正确
+                // 最稳妥的方法是：如果 ID 变了，直接用 Root 里的数据重置 team 里的 pkmn 对象
+                // 保留一些战斗相关的字段如 playerHp 可能会导致 bug (因为HP上限可能不同)，
+                // 所以这里我们简单粗暴地重置它，让游戏逻辑自己去修正 HP。
+                
+                // 深拷贝 Root 数据
+                let newPkmnObj = JSON.parse(JSON.stringify(jsonData[newId]));
+                newPkmnObj.id = newId; // 确保 ID 字段存在
+                
+                // 写入 team
+                jsonData.team[slotKey].pkmn = newPkmnObj;
+            }
+        });
+
+        // 导出
+        const blob = new Blob([JSON.stringify(jsonData)], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "pokechill.json";
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+</script>
+</body>
+</html>
