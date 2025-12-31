@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokechill Save Editor (Fix Version)</title>
+    <title>Pokechill Save Editor (Fix Version + IVs/Level)</title>
     <style>
         :root {
             --primary: #6c5ce7;
@@ -48,7 +48,7 @@
         /* --- Team Editor --- */
         .team-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); /* 稍微加宽一点以容纳更多信息 */
             gap: 20px;
         }
 
@@ -97,6 +97,44 @@
         }
         .form-row input:focus { border-color: var(--primary); outline: none; }
         
+        /* IV Editor Styles */
+        .iv-section-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #a4b0be;
+            margin-top: 12px;
+            margin-bottom: 6px;
+            border-top: 1px dashed #eee;
+            padding-top: 8px;
+        }
+        .iv-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+        .iv-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+        .iv-group label {
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 2px;
+            font-weight: 600;
+        }
+        .iv-group input {
+            width: 100%;
+            text-align: center;
+            padding: 4px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            box-sizing: border-box;
+        }
+
         .moves-box { 
             background: #f1f2f6; 
             padding: 10px; 
@@ -173,7 +211,7 @@
 
 <div class="container">
     <h1>pokechill 存档修改器</h1>
-    <div class="subtitle">Support Team Editing (Shiny, Moves, Species) & Item Editing</div>
+    <div class="subtitle">Support Team Editing (Shiny, Moves, Species, Level, IVs) & Item Editing</div>
     
     <div class="controls">
         <input type="file" id="fileInput" accept=".json">
@@ -199,7 +237,7 @@
     let jsonData = null;
     let activePreviewKey = "preview1"; // Default
 
-    // --- 1. 精准翻译库 (保留第一版) ---
+    // --- 1. 精准翻译库 ---
     const preciseMap = {
         "rareCandy": "神奇糖果 (升级)", "goldenBottleCap": "金色王冠 (满个体)", "bottleCap": "银色王冠",
         "abilityPatch": "特性药膏 (梦特)", "abilityCapsule": "特性胶囊", "ppUp": "PP提升剂",
@@ -250,9 +288,6 @@
     const searchBox = document.getElementById('searchBox');
     const saveBtn = document.getElementById('saveBtn');
     const errorMsg = document.getElementById('errorMsg');
-
-    // 暂存队伍数据的编辑状态（因为直接修改jsonData可能在保存前逻辑太乱，
-    // 我们这里采用直接绑定到DOM，保存时再读取DOM写回jsonData的方式）
     
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
@@ -283,7 +318,6 @@
     function renderTeam() {
         teamGrid.innerHTML = '';
         
-        // 1. 读取配置表 (Config)
         const previewData = jsonData.saved.previewTeams[activePreviewKey];
         if (!previewData) {
             teamGrid.innerHTML = '<div>Error: Could not find active preview team data.</div>';
@@ -292,9 +326,8 @@
 
         for (let i = 1; i <= 6; i++) {
             const slotKey = 'slot' + i;
-            const configSlot = previewData[slotKey]; // Contains { pkmn: "id", item: "item" }
+            const configSlot = previewData[slotKey]; 
             
-            // 如果该槽位没有宝可梦，显示为空
             if (!configSlot || !configSlot.pkmn) {
                 const empty = document.createElement('div');
                 empty.className = 'pkmn-card';
@@ -304,16 +337,16 @@
             }
 
             const speciesId = configSlot.pkmn;
-            // 2. 读取本体数据 (Root Object)，这里包含了Moves, Shiny等
-            // 如果root里找不到这个id（理论上不应该），就用默认空对象防止报错
-            const rootPkmn = jsonData[speciesId] || { moves: {}, ability: "", shiny: false };
+            // 2. 读取本体数据
+            const rootPkmn = jsonData[speciesId] || { moves: {}, ability: "", shiny: false, ivs: {} };
             
-            // 确保 moves 结构存在
+            // 确保数据结构存在 (默认值)
             if (!rootPkmn.moves) rootPkmn.moves = {};
+            const level = rootPkmn.level || 100;
+            const ivs = rootPkmn.ivs || { hp:31, atk:31, def:31, satk:31, sdef:31, spe:31 };
 
             const card = document.createElement('div');
             card.className = 'pkmn-card';
-            // 我们把 slotKey 存在 data 属性里，方便保存时读取
             card.dataset.slotKey = slotKey; 
             
             card.innerHTML = `
@@ -329,12 +362,26 @@
                     <input type="text" class="inp-id" value="${speciesId}">
                 </div>
                 <div class="form-row">
+                    <label>Level</label>
+                    <input type="number" class="inp-level" value="${level}" min="1" max="100">
+                </div>
+                <div class="form-row">
                     <label>Item</label>
                     <input type="text" class="inp-item" value="${configSlot.item || ''}">
                 </div>
                 <div class="form-row">
                     <label>Ability</label>
-                    <input type="text" class="inp-ability" value="${rootPkmn.ability || ''}">
+                    <input type="text" class="inp-ability" value="${rootPkmn.ability || ''}" placeholder="e.g. Levitate">
+                </div>
+
+                <div class="iv-section-title">IVs (Individual Values)</div>
+                <div class="iv-row">
+                    <div class="iv-group"><label>HP</label><input type="number" class="iv-hp" value="${ivs.hp !== undefined ? ivs.hp : 31}" min="0" max="31"></div>
+                    <div class="iv-group"><label>Atk</label><input type="number" class="iv-atk" value="${ivs.atk !== undefined ? ivs.atk : 31}" min="0" max="31"></div>
+                    <div class="iv-group"><label>Def</label><input type="number" class="iv-def" value="${ivs.def !== undefined ? ivs.def : 31}" min="0" max="31"></div>
+                    <div class="iv-group"><label>SpA</label><input type="number" class="iv-satk" value="${ivs.satk !== undefined ? ivs.satk : 31}" min="0" max="31"></div>
+                    <div class="iv-group"><label>SpD</label><input type="number" class="iv-sdef" value="${ivs.sdef !== undefined ? ivs.sdef : 31}" min="0" max="31"></div>
+                    <div class="iv-group"><label>Spe</label><input type="number" class="iv-spe" value="${ivs.spe !== undefined ? ivs.spe : 31}" min="0" max="31"></div>
                 </div>
 
                 <div class="moves-box">
@@ -377,7 +424,6 @@
                     </div>
                 `;
                 
-                // 物品数量直接绑定修改
                 card.querySelector('input').addEventListener('input', function() {
                     jsonData[key].got = parseInt(this.value) || 0;
                 });
@@ -389,11 +435,10 @@
 
     searchBox.addEventListener('input', (e) => renderItems(e.target.value));
 
-    // --- 4. 保存逻辑 (核心修复) ---
+    // --- 4. 保存逻辑 ---
     saveBtn.addEventListener('click', () => {
         if(!jsonData) return;
 
-        // 遍历队伍编辑器中的卡片，把数据写回 JSON
         const cards = teamGrid.querySelectorAll('.pkmn-card');
         
         cards.forEach(card => {
@@ -404,6 +449,17 @@
             const newItem = card.querySelector('.inp-item').value.trim();
             const newAbility = card.querySelector('.inp-ability').value.trim();
             const newShiny = card.querySelector('.inp-shiny').checked;
+            const newLevel = parseInt(card.querySelector('.inp-level').value) || 100;
+            
+            // 获取 IVs
+            const newIvs = {
+                hp: parseInt(card.querySelector('.iv-hp').value) || 0,
+                atk: parseInt(card.querySelector('.iv-atk').value) || 0,
+                def: parseInt(card.querySelector('.iv-def').value) || 0,
+                satk: parseInt(card.querySelector('.iv-satk').value) || 0,
+                sdef: parseInt(card.querySelector('.iv-sdef').value) || 0,
+                spe: parseInt(card.querySelector('.iv-spe').value) || 0,
+            };
             
             const m1 = card.querySelector('.move-1').value.trim() || null;
             const m2 = card.querySelector('.move-2').value.trim() || null;
@@ -412,7 +468,6 @@
             const newMoves = { slot1: m1, slot2: m2, slot3: m3, slot4: m4 };
 
             // 1. 更新 Config (saved.previewTeams)
-            // 告诉游戏这个槽位现在是这个宝可梦和道具
             if (!jsonData.saved.previewTeams[activePreviewKey][slotKey]) {
                 jsonData.saved.previewTeams[activePreviewKey][slotKey] = {};
             }
@@ -420,41 +475,33 @@
             jsonData.saved.previewTeams[activePreviewKey][slotKey].item = newItem;
 
             // 2. 更新 Root Species Data (宝可梦本体)
-            // 确保该 ID 对应的根对象存在
             if (!jsonData[newId]) {
-                // 如果是新宝可梦，创建一个基础模板
                 jsonData[newId] = {
-                    caught: 1, // 关键：标记为已捕获
-                    level: 100, // 默认满级方便使用
+                    caught: 1, 
+                    level: newLevel,
                     exp: 0,
-                    ivs: { hp:31, atk:31, def:31, satk:31, sdef:31, spe:31 }, // 默认给点个体值
+                    ivs: newIvs,
                     moves: {}
                 };
             } else {
-                // 如果已存在，强制设为 caught=1 (防止修改成未抓过的导致不可用)
                 if (!jsonData[newId].caught) jsonData[newId].caught = 1;
             }
 
-            // 写入本体属性
+            // 写入所有属性
             jsonData[newId].ability = newAbility;
             jsonData[newId].shiny = newShiny;
             jsonData[newId].moves = newMoves;
+            jsonData[newId].level = newLevel;
+            jsonData[newId].ivs = newIvs;
 
             // 3. 更新 Runtime Team (jsonData.team)
-            // 这是为了防止加载存档的瞬间数据不一致
             if (jsonData.team && jsonData.team[slotKey]) {
                 jsonData.team[slotKey].item = newItem;
                 
-                // 我们必须确保 team 里的 pkmn 对象 ID 正确
-                // 最稳妥的方法是：如果 ID 变了，直接用 Root 里的数据重置 team 里的 pkmn 对象
-                // 保留一些战斗相关的字段如 playerHp 可能会导致 bug (因为HP上限可能不同)，
-                // 所以这里我们简单粗暴地重置它，让游戏逻辑自己去修正 HP。
-                
-                // 深拷贝 Root 数据
+                // 深拷贝 Root 数据覆盖 team 数据，确保 level, ivs 等生效
                 let newPkmnObj = JSON.parse(JSON.stringify(jsonData[newId]));
-                newPkmnObj.id = newId; // 确保 ID 字段存在
+                newPkmnObj.id = newId; 
                 
-                // 写入 team
                 jsonData.team[slotKey].pkmn = newPkmnObj;
             }
         });
@@ -471,5 +518,4 @@
 
 </script>
 </body>
-
 </html>
