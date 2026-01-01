@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokechill Save Editor (Full Features)</title>
+    <title>Pokechill Save Editor (Lvl 100 Safety Fix)</title>
     <style>
         :root {
             --primary: #6c5ce7;
@@ -11,6 +11,7 @@
             --card: #ffffff;
             --text: #2d3436;
             --border: #dfe6e9;
+            --danger: #d63031;
         }
 
         body {
@@ -209,6 +210,26 @@
             box-sizing: border-box;
             font-size: 14px;
         }
+        
+        /* Flex container for Search + Button */
+        .search-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .action-btn {
+            background: #00b894;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0 20px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.2s;
+        }
+        .action-btn:hover { background: #00a884; }
 
         .item-grid {
             display: grid;
@@ -261,12 +282,24 @@
         .save-btn:disabled { background: #b2bec3; cursor: not-allowed; box-shadow: none; transform: none; }
 
         #errorMsg { color: #d63031; text-align: center; display: none; margin-top: 15px; font-weight: bold; }
+
+        /* Learn All Button Style */
+        .btn-learn-all {
+            font-size: 9px; 
+            padding: 2px 6px; 
+            cursor: pointer; 
+            border: 1px solid #0984e3; 
+            background: #fff; 
+            color: #0984e3;
+            border-radius: 3px;
+        }
+        .btn-learn-all:hover { background: #0984e3; color: white; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>pokechill 存档修改器</h1>
+    <h1>pokechill 存档修改器 (Lvl 100 Safety Fix)</h1>
     <div class="subtitle">Support Team Editing & Dex/Storage Editing (Level, IVs, Shiny) & Items</div>
     
     <div class="controls">
@@ -280,7 +313,10 @@
             </div>
 
         <h2>Dex / Storage Editor (批量修改仓库/图鉴)</h2>
-        <input type="text" id="dexSearchBox" class="search-bar" placeholder="搜索宝可梦 ID / Search Species ID (e.g. charizard)...">
+        <div class="search-row">
+            <input type="text" id="dexSearchBox" class="search-bar" style="margin-bottom:0;" placeholder="搜索宝可梦 ID / Search Species ID (e.g. charizard)...">
+            <button id="unlockAllDexBtn" class="action-btn">一键全图鉴 (Unlock All)</button>
+        </div>
         <div class="dex-grid" id="dexGrid">
             </div>
 
@@ -451,7 +487,7 @@
         reader.readAsText(file);
     });
 
-    // --- Render Team (Updated: Learn All) ---
+    // --- Render Team ---
     function renderTeam() {
         teamGrid.innerHTML = '';
         const previewData = jsonData.saved.previewTeams[activePreviewKey];
@@ -526,7 +562,7 @@
                 <div class="moves-box">
                     <div class="moves-title" style="display:flex; justify-content:space-between; align-items:center;">
                         <span>MOVESET</span>
-                        <button type="button" class="learn-all-btn" style="font-size:10px; padding:2px 6px; cursor:pointer; border:1px solid #ccc; background:#fff; border-radius:3px;">Learn All</button>
+                        <button type="button" class="btn-learn-all learn-all-btn">Learn All (Lvl 100 Only)</button>
                     </div>
                     <div class="form-row"><label>M1</label><div class="ac-wrapper"><input type="text" class="move-1" value="${rootPkmn.moves.slot1 || ''}" autocomplete="off"></div></div>
                     <div class="form-row"><label>M2</label><div class="ac-wrapper"><input type="text" class="move-2" value="${rootPkmn.moves.slot2 || ''}" autocomplete="off"></div></div>
@@ -536,16 +572,23 @@
             `;
             teamGrid.appendChild(card);
 
-            // Bind Learn All Logic
+            // --- RESTORED LOGIC WITH SAFETY CHECK ---
             card.querySelector('.learn-all-btn').addEventListener('click', () => {
+                const currentLevel = parseInt(card.querySelector('.inp-level').value) || 1;
+                
+                // 【修改重点】等级锁检查
+                if (currentLevel !== 100) {
+                    alert("⚠️ To prevent bugs (game crash/stuck level), 'Unlock All Moves' is restricted to Level 100 Pokemon only.\n⚠️ 为了防止游戏Bug（卡7级/崩溃），一键全技能仅限 100级 宝可梦使用。");
+                    return;
+                }
+
                 if (!jsonData[speciesId].movepool) jsonData[speciesId].movepool = [];
                 const currentPool = new Set(jsonData[speciesId].movepool);
                 searchDB.moves.forEach(m => currentPool.add(m));
                 jsonData[speciesId].movepool = Array.from(currentPool);
-                alert(`[${speciesId}] Learned all ${searchDB.moves.length} moves!`);
+                alert(`[${speciesId}] Learned all ${searchDB.moves.length} moves! (Level 100 confirmed)`);
             });
 
-            // 绑定自动联想
             setupAutocomplete(card.querySelector('.inp-id'), searchDB.pkmn);
             setupAutocomplete(card.querySelector('.inp-item'), searchDB.items);
             setupAutocomplete(card.querySelector('.inp-ability'), searchDB.abilities);
@@ -556,7 +599,37 @@
         }
     }
 
-    // --- Render Dex (Updated: Learn All) ---
+    // --- Unlock All Dex Logic ---
+    document.getElementById('unlockAllDexBtn').addEventListener('click', () => {
+        if (!jsonData) return;
+        const confirmUnlock = confirm("Are you sure you want to unlock ALL Pokemon (Dex)?\n确定要一键解锁图鉴中所有宝可梦吗？");
+        if (!confirmUnlock) return;
+
+        let unlockedCount = 0;
+        searchDB.pkmn.forEach(speciesId => {
+            if (!jsonData[speciesId]) {
+                jsonData[speciesId] = {
+                    caught: 1,
+                    level: 1, 
+                    exp: 0, 
+                    shiny: false,
+                    ivs: { hp:0, atk:0, def:0, satk:0, sdef:0, spe:0 },
+                    moves: {}
+                };
+                unlockedCount++;
+            } else {
+                if (jsonData[speciesId].caught !== 1) {
+                    jsonData[speciesId].caught = 1;
+                    unlockedCount++;
+                }
+            }
+        });
+
+        alert(`Success! Unlocked ${unlockedCount} new Pokemon.\n成功解锁了 ${unlockedCount} 只新宝可梦！`);
+        renderDex(dexSearchBox.value);
+    });
+
+    // --- Render Dex ---
     function renderDex(filter = "") {
         dexGrid.innerHTML = '';
         const keys = Object.keys(jsonData);
@@ -598,11 +671,18 @@
                     <div class="iv-group"><label>D</label><input type="number" class="dex-sdef" value="${ivs.sdef !== undefined ? ivs.sdef : 0}" min="0" max="31"></div>
                     <div class="iv-group"><label>S</label><input type="number" class="dex-spe" value="${ivs.spe !== undefined ? ivs.spe : 0}" min="0" max="31"></div>
                 </div>
-                <button class="dex-learn-all" style="width:100%; margin-top:10px; padding:5px; font-size:11px; cursor:pointer; background:#fff; border:1px solid #ccc; border-radius:4px;">Learn All Moves</button>
+                <button class="btn-learn-all dex-learn-all" style="width:100%; margin-top:10px;">Learn All Moves (Lvl 100)</button>
             `;
             
-            // Bind Learn All
+            // --- RESTORED LOGIC WITH SAFETY CHECK ---
             card.querySelector('.dex-learn-all').addEventListener('click', () => {
+                const currentLevel = parseInt(card.querySelector('.dex-level').value) || 1;
+                
+                if (currentLevel !== 100) {
+                     alert("⚠️ Restricted to Level 100 only to prevent bugs.\n⚠️ 仅限 100级 使用以防止Bug。");
+                    return;
+                }
+
                 if (!jsonData[speciesId].movepool) jsonData[speciesId].movepool = [];
                 const currentPool = new Set(jsonData[speciesId].movepool);
                 searchDB.moves.forEach(m => currentPool.add(m));
@@ -613,9 +693,11 @@
             card.querySelector('.dex-shiny').addEventListener('change', function() {
                 jsonData[speciesId].shiny = this.checked;
             });
+            
             card.querySelector('.dex-level').addEventListener('input', function() {
                 jsonData[speciesId].level = parseInt(this.value) || 1;
             });
+
             const ivInputs = card.querySelectorAll('.iv-row input');
             ivInputs.forEach(inp => {
                 inp.addEventListener('input', function() {
@@ -672,7 +754,7 @@
 
     itemSearchBox.addEventListener('input', (e) => renderItems(e.target.value));
 
-    // --- 5. 保存逻辑 (Ensures empty slot safety) ---
+    // --- 5. 保存逻辑 (DATA SANITIZATION) ---
     saveBtn.addEventListener('click', () => {
         if(!jsonData) return;
         
@@ -681,16 +763,14 @@
         cards.forEach(card => {
             const slotKey = card.dataset.slotKey;
             
-            // 安全检查：跳过空槽位
             const idInput = card.querySelector('.inp-id');
             if (!idInput) return;
 
-            // 获取输入框的值
             const newId = idInput.value.trim();
             const newItem = card.querySelector('.inp-item').value.trim();
             const newAbility = card.querySelector('.inp-ability').value.trim();
             const newShiny = card.querySelector('.inp-shiny').checked;
-            const newLevel = parseInt(card.querySelector('.inp-level').value) || 100;
+            const newLevel = parseInt(card.querySelector('.inp-level').value) || 1;
             
             const newIvs = {
                 hp: parseInt(card.querySelector('.iv-hp').value) || 0,
@@ -719,7 +799,6 @@
                 jsonData[newId] = {
                     caught: 1, 
                     level: newLevel,
-                    exp: 0,
                     ivs: newIvs,
                     moves: {}
                 };
@@ -733,6 +812,29 @@
             jsonData[newId].moves = newMoves;
             jsonData[newId].level = newLevel;
             jsonData[newId].ivs = newIvs;
+            
+            // --- FIX 1: Hybrid Level Logic (保留防105级BUG的经验值逻辑) ---
+            if (newLevel === 1) {
+                jsonData[newId].exp = 0;
+            } else {
+                if (jsonData[newId].hasOwnProperty('exp')) {
+                    delete jsonData[newId].exp;
+                }
+            }
+
+            // --- FIX 2: CONDITIONAL Movepool Sanitization (防止降级后卡死) ---
+            // 如果等级 < 100 且技能池巨大，自动清理，只保留当前携带的技能。
+            // 这样如果你先改到100级解锁技能，再改回5级，这里会自动清理技能池，防止坏档。
+            
+            if (newLevel < 100 && jsonData[newId].movepool && jsonData[newId].movepool.length > 50) {
+                // Wipe movepool for safety if level dropped below 100
+                let safePool = new Set();
+                if (m1) safePool.add(m1);
+                if (m2) safePool.add(m2);
+                if (m3) safePool.add(m3);
+                if (m4) safePool.add(m4);
+                jsonData[newId].movepool = Array.from(safePool);
+            }
 
             // Update Runtime Team
             if (jsonData.team && jsonData.team[slotKey]) {
