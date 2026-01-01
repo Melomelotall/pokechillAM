@@ -299,7 +299,7 @@
 <body>
 
 <div class="container">
-    <h1>pokechill 存档修改器 (Lvl 100 Safety Fix)</h1>
+    <h1>Pokechill Save Editor (Full Skills Ver)</h1>
     <div class="subtitle">Support Team Editing & Dex/Storage Editing (Level, IVs, Shiny) & Items</div>
     
     <div class="controls">
@@ -335,6 +335,32 @@
 
     // 用于存储自动补全的数据源
     let searchDB = { pkmn: [], items: [], abilities: [], moves: [] };
+
+    // --- 0. 静态全技能库 (提取自 1.9 全技能存档) ---
+    const FULL_SKILL_LIB = [
+        "accelerock", "acid", "acidArmor", "acidSpray", "acrobatics", "agility", "airShlash", "alluringVoice", "amnesia", "ancientPower", 
+        "aquaJet", "aquaTail", "armThrust", "aromaticMist", "auraSphere", "auroraBeam", "avalanche", "babydollEyes", "barrier", "bite", 
+        "blizzard", "bodyPress", "bounce", "brickBreak", "bubbleBeam", "bugBite", "bugBuzz", "bulkUp", "bulldoze", "bulletPunch", "bulletSeed", 
+        "calmMind", "chargeBeam", "charm", "chillingWater", "closeCombat", "coil", "confuseRay", "confusion", "cottonSpore", "crossPoison", 
+        "crunch", "cut", "darkPulse", "dazzlingGleam", "dig", "disarmingVoice", "discharge", "dizzyPunch", "doubleHit", "doubleSlap", 
+        "dracoMeteor", "dragonBreath", "dragonClaw", "dragonDance", "dragonPulse", "dragonRush", "dragonTail", "drillPeck", "dualChop", 
+        "dualWingbeat", "earthPower", "earthquake", "electricTerrain", "electroWeb", "ember", "energyBall", "extrasensory", "extremeSpeed", 
+        "facade", "fairyWind", "fakeTears", "featherDance", "feintAttack", "fireBlast", "fireFang", "firePunch", "fireSpin", "flameCharge", 
+        "flamethrower", "flareBlitz", "flashCannon", "fly", "focusBlast", "fog", "forcePalm", "frostBreath", "furyCutter", "gigaImpact", 
+        "grassyTerrain", "growl", "gust", "hail", "heatWave", "hex", "honeClaws", "hurricane", "hydroPump", "hyperBeam", "hyperVoice", 
+        "iceBeam", "iceFang", "icePunch", "iceShard", "icicleCrash", "icicleSpear", "icyWind", "incinerate", "infestation", "ironDefense", 
+        "ironHead", "ironTail", "knockOff", "leafBlade", "leafage", "leer", "lick", "liquidation", "lowSweep", "machPunk", "magicalLeaf", 
+        "magnetBomb", "magneticFlux", "magnitude", "metalClaw", "metalSound", "mirrorShot", "mistyTerrain", "mudShot", "mudSlap", "muddyWater", 
+        "nastyPlot", "nightSlash", "nuzzle", "ominousWind", "outrage", "overheat", "peck", "pinMissile", "playNice", "playRough", "poisonFang", 
+        "poisonJab", "poisonPowder", "poisonSting", "pounce", "powderSnow", "powerGem", "powerupPunch", "psybeam", "psychic", "psychoCut", 
+        "pursuit", "quickAttack", "rainDance", "razorLeaf", "rockBlast", "rockPolish", "rockSlide", "rockSmash", "rockThrow", "rollout", 
+        "rototiller", "sandstorm", "scald", "scorchingSands", "screech", "seedBomb", "shadowBall", "shadowClaw", "shadowPunch", "shadowSneak", 
+        "signalBeam", "silverWind", "skyDrop", "sludge", "sludgeBomb", "sludgeWave", "smackDown", "smellingSalts", "smog", "snarl", "solarBeam", 
+        "solarBlade", "spore", "steelWing", "stickyWeb", "stomp", "stoneEdge", "strength", "stringShot", "struggleBug", "stunSpore", "sunnyDay", 
+        "surf", "swagger", "sweetKiss", "swift", "swordsDance", "tackle", "tailwind", "thunder", "thunderFang", "thunderPunch", "thunderShock", 
+        "thunderWave", "thunderbolt", "toxic", "twinBeam", "twineedle", "twister", "vacuumWave", "vineWhip", "waterGun", "waterPulse", 
+        "waterfall", "whirlpool", "willOWisp", "xScissor"
+    ];
 
     // --- 1. 精准翻译库 ---
     const preciseMap = {
@@ -455,6 +481,9 @@
                 const itemSet = new Set();
                 const abilitySet = new Set();
                 const moveSet = new Set();
+
+                // 先把全技能库加进去
+                FULL_SKILL_LIB.forEach(m => moveSet.add(m));
 
                 Object.keys(jsonData).forEach(key => {
                     const val = jsonData[key];
@@ -857,4 +886,3 @@
 </script>
 </body>
 </html>
-
